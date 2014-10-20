@@ -7,7 +7,7 @@ var defaults = require('lodash.defaults');
 var convert = require('convert-source-map');
 var applySourceMap = require('vinyl-sourcemaps-apply');
 
-module.exports = function (options) {
+module.exports = function (options, additionalData) {
   // Mixes in default options.
   options = defaults(options || {}, {
     compress: false,
@@ -39,20 +39,30 @@ module.exports = function (options) {
       opts.sourceMap = true;
     }
 
-    less.render(str, opts, function (err, css) {
+    var errCb = function (err) {
+      // Convert the keys so PluginError can read them
+      err.lineNumber = err.line;
+      err.fileName = err.filename;
+       
+      // Add a better error message
+      err.message = err.message + ' in file ' + err.fileName + ' line no. ' + err.lineNumber;
+      cb(new PluginError('gulp-less', err));
+      return;
+    };
+   
+    var parser = new (less.Parser)(opts);
+    parser.parse(str, function (err, root) {
       if (err) {
-
-        // Convert the keys so PluginError can read them
-        err.lineNumber = err.line;
-        err.fileName = err.filename;
-
-        // Add a better error message
-        err.message = err.message + ' in file ' + err.fileName + ' line no. ' + err.lineNumber;
-
-        return cb(new PluginError('gulp-less', err));
+        return errCb(err);
       } else {
+        var css;
+        try {
+          css = root && root.toCSS && root.toCSS(opts);
+        } catch (err) {
+          return errCb(err);
+        }
+        
         file.contents = new Buffer(css);
-        file.path = gutil.replaceExtension(file.path, '.css');
 
         if (file.sourceMap) {
           var comment = convert.fromSource(css);
@@ -67,9 +77,10 @@ module.exports = function (options) {
           }
         }
 
+        file.path = gutil.replaceExtension(file.path, '.css');
         cb(null, file);
       }
-    });
+    }, additionalData);
   });
 };
 
