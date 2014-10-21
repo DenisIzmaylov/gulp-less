@@ -20,6 +20,10 @@ gulp.task('less', function () {
   gulp.src('./less/**/*.less')
     .pipe(less({
       paths: [ path.join(__dirname, 'less', 'includes') ]
+    }, {
+      modifyVars: {
+        'bgcolor': 'grey'
+      }
     }))
     .pipe(gulp.dest('./public/css'));
 });
