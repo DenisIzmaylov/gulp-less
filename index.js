@@ -77,7 +77,6 @@ module.exports = function (options, additionalData) {
           }
         }
 
-        file.path = gutil.replaceExtension(file.path, '.css');
         cb(null, file);
       }
     }, additionalData);
